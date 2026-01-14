@@ -22,7 +22,7 @@ pip install fastapi uvicorn python-multipart
 
 ## 架构
 
-**后端** (`skill-assistant/backend/main.py`)：
+**后端** (`api/main.py`)：
 - FastAPI REST API，启用 CORS
 - 接口：
   - `POST /upload` - 上传并解析技能 zip 文件
@@ -34,7 +34,7 @@ pip install fastapi uvicorn python-multipart
 - 缓存复制到 `~/.claude/plugins/cache/anthropic-agent-skills/`
 - 更新 `~/.claude/plugins/installed_plugins.json` 注册
 
-**前端** (`skill-assistant/frontend/index.html`)：
+**前端** (`index.html`)：
 - 单文件 React 应用（React 18、Tailwind CSS、Babel）
 - 终端/黑客风格 UI（JetBrains Mono + Orbitron 字体）
 - 功能组件：
@@ -57,13 +57,18 @@ description: 技能描述
 
 ## 关键目录
 
-- `skill-assistant/backend/` - FastAPI 后端
-- `skill-assistant/frontend/` - React 前端
+- `api/` - FastAPI 后端
+- `index.html` - React 前端
 - `sample-skills/` - 示例技能
 - `start.sh` - 一键启动脚本
+- `vercel.json` - Vercel 部署配置
 
 ### Claude Code 技能目录
 
 - `~/.claude/plugins/marketplaces/anthropic-agent-skills/` - 技能源
 - `~/.claude/plugins/cache/anthropic-agent-skills/` - 缓存
 - `~/.claude/plugins/installed_plugins.json` - 注册文件
+
+## Vercel 部署
+
+前端可直接部署到 Vercel（静态站点）。后端需要本地运行，因为需要访问本地文件系统。

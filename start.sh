@@ -60,7 +60,7 @@ python3 -c "import fastapi, uvicorn" 2>/dev/null || {
 
 # 启动后端 (端口 8000)
 echo -e "${GREEN}启动后端服务 (http://localhost:8000)...${NC}"
-cd "$SCRIPT_DIR/skill-assistant/backend"
+cd "$SCRIPT_DIR/api"
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
 cd "$SCRIPT_DIR"
@@ -70,10 +70,8 @@ sleep 2
 
 # 启动前端 (端口 8001)
 echo -e "${GREEN}启动前端服务 (http://localhost:8001)...${NC}"
-cd "$SCRIPT_DIR/skill-assistant/frontend"
 python3 -m http.server 8001 &
 FRONTEND_PID=$!
-cd "$SCRIPT_DIR"
 
 echo ""
 echo -e "${CYAN}════════════════════════════════════════════${NC}"

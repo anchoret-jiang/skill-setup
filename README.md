@@ -75,10 +75,27 @@ description: 技能描述
 
 ```bash
 # 终端 1: 启动后端
-cd skill-assistant/backend
+cd api
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
-# 终端 2: 启动前端
-cd skill-assistant/frontend
+# 终端 2: 启动前端（在项目根目录）
 python3 -m http.server 8001
 ```
+
+## Vercel 部署
+
+本项目支持部署到 Vercel：
+
+1. 前端可直接部署到 Vercel（静态站点）
+2. 后端需要本地运行（需要访问本地文件系统 `~/.claude/plugins/`）
+
+部署步骤：
+```bash
+# 安装 Vercel CLI
+npm i -g vercel
+
+# 部署
+vercel
+```
+
+注意：Vercel 部署的是前端演示界面。实际使用需要本地运行后端服务。
