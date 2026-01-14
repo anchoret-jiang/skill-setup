@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Skills Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-primary: #00ff88;
+            --neon-secondary: #00ffff;
+            --neon-warning: #ffaa00;
+            --neon-danger: #ff3366;
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-elevated: #1a1a24;
+            --border-color: #2a2a3a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888898;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--neon-primary) var(--bg-card);
+        }
+
+        *::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        *::-webkit-scrollbar-track {
+            background: var(--bg-card);
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background: var(--neon-primary);
+            border-radius: 3px;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* 扫描线效果 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 255, 136, 0.03) 2px,
+                rgba(0, 255, 136, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* 网格背景 */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 255, 136, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .glow-text {
+            text-shadow: 0 0 10px var(--neon-primary), 0 0 20px var(--neon-primary), 0 0 40px var(--neon-primary);
+        }
+
+        .glow-box {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.05);
+        }
+
+        .glow-border {
+            border: 1px solid var(--neon-primary);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3), inset 0 0 10px rgba(0, 255, 136, 0.05);
+        }
+
+        .terminal-header {
+            background: linear-gradient(90deg, var(--bg-elevated) 0%, var(--bg-card) 100%);
+            border-bottom: 1px solid var(--neon-primary);
+        }
+
+        .cyber-btn {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 255, 255, 0.1) 100%);
+            border: 1px solid var(--neon-primary);
+            color: var(--neon-primary);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cyber-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .cyber-btn:hover::before {
+            left: 100%;
+        }
+
+        .cyber-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.2) 0%, rgba(0, 255, 255, 0.2) 100%);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .cyber-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .cyber-btn-danger {
+            border-color: var(--neon-danger);
+            color: var(--neon-danger);
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.1) 0%, rgba(255, 51, 102, 0.05) 100%);
+        }
+
+        .cyber-btn-danger:hover {
+            background: linear-gradient(135deg, rgba(255, 51, 102, 0.2) 0%, rgba(255, 51, 102, 0.1) 100%);
+            box-shadow: 0 0 20px rgba(255, 51, 102, 0.4);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-color);
+            background: var(--bg-card);
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.active {
+            border-color: var(--neon-primary);
+            background: rgba(0, 255, 136, 0.05);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+        }
+
+        .skill-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .skill-card:hover {
+            border-color: var(--neon-secondary);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.2);
+            transform: translateX(5px);
+        }
+
+        .custom-checkbox {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--neon-primary);
+            background: transparent;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .custom-checkbox:checked {
+            background: var(--neon-primary);
+            box-shadow: 0 0 10px var(--neon-primary);
+        }
+
+        .custom-checkbox:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--bg-dark);
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .terminal-input {
+            background: var(--bg-dark);
+            border: 1px solid var(--border-color);
+            color: var(--neon-primary);
+            caret-color: var(--neon-primary);
+            transition: all 0.3s ease;
+        }
+
+        .terminal-input:focus {
+            outline: none;
+            border-color: var(--neon-primary);
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .terminal-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* 打字光标动画 */
+        .cursor-blink::after {
+            content: '█';
+            animation: blink 1s infinite;
+            margin-left: 2px;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        /* 进度条动画 */
+        .progress-bar {
+            background: var(--bg-dark);
+            border: 1px solid var(--neon-primary);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--neon-primary), var(--neon-secondary));
+            height: 100%;
+            transition: width 0.3s ease;
+            position: relative;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Toast 动画 */
+        .toast-enter {
+            animation: slideIn 0.3s ease forwards;
+        }
+
+        .toast-exit {
+            animation: slideOut 0.3s ease forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+
+        /* 模态框 */
+        .modal-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: var(--bg-card);
+            border: 1px solid var(--neon-primary);
+            box-shadow: 0 0 50px rgba(0, 255, 136, 0.3);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* Tab 样式 */
+        .tab-btn {
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--neon-primary);
+        }
+
+        .tab-btn.active {
+            color: var(--neon-primary);
+            border-bottom-color: var(--neon-primary);
+            text-shadow: 0 0 10px var(--neon-primary);
+        }
+
+        /* 标签样式 */
+        .tag {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--neon-primary);
+            color: var(--neon-primary);
+            font-size: 10px;
+            padding: 2px 8px;
+        }
+
+        .tag-valid {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--neon-primary);
+            color: var(--neon-primary);
+        }
+
+        .tag-installed {
+            background: rgba(0, 255, 255, 0.1);
+            border-color: var(--neon-secondary);
+            color: var(--neon-secondary);
+        }
+
+        .tag-source {
+            background: rgba(136, 136, 152, 0.1);
+            border-color: var(--text-secondary);
+            color: var(--text-secondary);
+        }
+
+        .tag-local {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: var(--neon-primary);
+            color: var(--neon-primary);
+        }
+
+        /* ASCII 边框 */
+        .ascii-box {
+            position: relative;
+        }
+
+        .ascii-box::before {
+            content: '┌─────────────────────────────────────────────────────────────────────────────────┐';
+            position: absolute;
+            top: -12px;
+            left: 0;
+            color: var(--neon-primary);
+            font-size: 10px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const API_URL = "http://localhost:8000";
+
+        // Toast 通知组件
+        function ToastContainer({ toasts, removeToast }) {
+            return (
+                <div className="fixed top-4 right-4 z-50 space-y-2">
+                    {toasts.map(toast => (
+                        <div
+                            key={toast.id}
+                            className={`toast-enter px-4 py-3 rounded flex items-center gap-3 min-w-[300px] ${
+                                toast.type === 'success' ? 'glow-border' :
+                                toast.type === 'error' ? 'border border-[var(--neon-danger)]' :
+                                'border border-[var(--neon-warning)]'
+                            }`}
+                            style={{ background: 'var(--bg-card)' }}
+                        >
+                            <span className={`text-lg ${
+                                toast.type === 'success' ? 'text-[var(--neon-primary)]' :
+                                toast.type === 'error' ? 'text-[var(--neon-danger)]' :
+                                'text-[var(--neon-warning)]'
+                            }`}>
+                                {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✗' : '!'}
+                            </span>
+                            <span className="flex-1 text-sm">{toast.message}</span>
+                            <button
+                                onClick={() => removeToast(toast.id)}
+                                className="text-[var(--text-secondary)] hover:text-white"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        // 技能详情模态框
+        function SkillDetailModal({ skill, onClose }) {
+            if (!skill) return null;
+
+            return (
+                <div className="modal-overlay fixed inset-0 z-40 flex items-center justify-center p-4" onClick={onClose}>
+                    <div
+                        className="modal-content rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="p-4 border-b border-[var(--border-color)] flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <span className="text-[var(--neon-primary)] text-xl">◆</span>
+                                <h2 className="text-lg font-semibold text-[var(--neon-primary)]">{skill.name}</h2>
+                                {skill.isValid && <span className="tag tag-valid rounded">VALID</span>}
+                                {skill.isInstalled && <span className="tag tag-installed rounded">INSTALLED</span>}
+                            </div>
+                            <button
+                                onClick={onClose}
+                                className="text-[var(--text-secondary)] hover:text-[var(--neon-danger)] text-xl"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto max-h-[60vh]">
+                            <div className="mb-4">
+                                <span className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">// Description</span>
+                                <p className="mt-2 text-[var(--text-primary)]">{skill.description}</p>
+                            </div>
+                            <div className="mb-4">
+                                <span className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">// Path</span>
+                                <code className="block mt-2 p-3 bg-[var(--bg-dark)] rounded text-[var(--neon-secondary)] text-xs break-all">
+                                    {skill.path}
+                                </code>
+                            </div>
+                            <div>
+                                <span className="text-[var(--text-secondary)] text-xs uppercase tracking-wider">// Skill ID</span>
+                                <code className="block mt-2 p-3 bg-[var(--bg-dark)] rounded text-[var(--neon-primary)] text-sm">
+                                    {skill.id}
+                                </code>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-[var(--border-color)] flex justify-end">
+                            <button onClick={onClose} className="cyber-btn px-6 py-2 rounded">
+                                [ CLOSE ]
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // 进度条组件
+        function ProgressBar({ progress, label }) {
+            return (
+                <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                        <span className="text-[var(--neon-primary)]">{label}</span>
+                        <span className="text-[var(--neon-secondary)]">{progress}%</span>
+                    </div>
+                    <div className="progress-bar h-2 rounded">
+                        <div className="progress-fill rounded" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function App() {
+            const [activeTab, setActiveTab] = useState('install');
+            const [uploadedSkills, setUploadedSkills] = useState([]);
+            const [installedSkills, setInstalledSkills] = useState([]);
+            const [selectedSkills, setSelectedSkills] = useState(new Set());
+            const [isDragging, setIsDragging] = useState(false);
+            const [isLoading, setIsLoading] = useState(false);
+            const [config, setConfig] = useState(null);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [selectedDetail, setSelectedDetail] = useState(null);
+            const [toasts, setToasts] = useState([]);
+            const [installProgress, setInstallProgress] = useState(0);
+            const [isInstalling, setIsInstalling] = useState(false);
+
+            const fileInputRef = useRef(null);
+            const toastIdRef = useRef(0);
+
+            // Toast 函数
+            const addToast = useCallback((message, type = 'success') => {
+                const id = ++toastIdRef.current;
+                setToasts(prev => [...prev, { id, message, type }]);
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(t => t.id !== id));
+                }, 4000);
+            }, []);
+
+            const removeToast = useCallback((id) => {
+                setToasts(prev => prev.filter(t => t.id !== id));
+            }, []);
+
+            useEffect(() => {
+                fetchInstalledSkills();
+                fetchConfig();
+            }, []);
+
+            const fetchConfig = async () => {
+                try {
+                    const res = await fetch(`${API_URL}/config`);
+                    const data = await res.json();
+                    setConfig(data);
+                } catch (err) {
+                    console.error("Failed to fetch config", err);
+                }
+            };
+
+            const fetchInstalledSkills = async () => {
+                try {
+                    const res = await fetch(`${API_URL}/installed`);
+                    const data = await res.json();
+                    setInstalledSkills(data);
+                } catch (err) {
+                    console.error("Failed to fetch installed skills", err);
+                }
+            };
+
+            const handleDragOver = (e) => {
+                e.preventDefault();
+                setIsDragging(true);
+            };
+
+            const handleDragLeave = () => {
+                setIsDragging(false);
+            };
+
+            const handleDrop = async (e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    await uploadFiles(files);
+                }
+            };
+
+            const handleFileSelect = async (e) => {
+                if (e.target.files.length > 0) {
+                    await uploadFiles(e.target.files);
+                }
+            };
+
+            const uploadFiles = async (files) => {
+                setIsLoading(true);
+                const formData = new FormData();
+                for (let i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
+                }
+
+                try {
+                    const res = await fetch(`${API_URL}/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const data = await res.json();
+
+                    let newCount = 0;
+                    setUploadedSkills(prev => {
+                        const newSkills = [...prev];
+                        data.forEach(skill => {
+                            if (!newSkills.find(s => s.path === skill.path)) {
+                                newSkills.push(skill);
+                                newCount++;
+                                if (skill.isValid) {
+                                    toggleSelection(skill.path, true);
+                                }
+                            }
+                        });
+                        return newSkills;
+                    });
+
+                    if (newCount > 0) {
+                        addToast(`解析成功: 发现 ${newCount} 个技能`, 'success');
+                    }
+                } catch (err) {
+                    addToast("上传失败: " + err.message, 'error');
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const toggleSelection = (path, forceState = null) => {
+                setSelectedSkills(prev => {
+                    const newSet = new Set(prev);
+                    const isSelected = newSet.has(path);
+                    const shouldSelect = forceState !== null ? forceState : !isSelected;
+
+                    if (shouldSelect) newSet.add(path);
+                    else newSet.delete(path);
+                    return newSet;
+                });
+            };
+
+            const handleInstall = async () => {
+                const skillsToInstall = uploadedSkills.filter(s => selectedSkills.has(s.path));
+                if (skillsToInstall.length === 0) return;
+
+                setIsInstalling(true);
+                setInstallProgress(0);
+
+                // 模拟进度
+                const progressInterval = setInterval(() => {
+                    setInstallProgress(prev => Math.min(prev + Math.random() * 15, 90));
+                }, 200);
+
+                try {
+                    const res = await fetch(`${API_URL}/install`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ paths: skillsToInstall.map(s => s.path) })
+                    });
+                    const result = await res.json();
+
+                    clearInterval(progressInterval);
+                    setInstallProgress(100);
+
+                    setTimeout(() => {
+                        if (result.status === 'success') {
+                            addToast(`安装成功: ${result.installed.length} 个技能已部署`, 'success');
+                            setUploadedSkills([]);
+                            setSelectedSkills(new Set());
+                            fetchInstalledSkills();
+                            setActiveTab('manage');
+                        }
+                        setIsInstalling(false);
+                        setInstallProgress(0);
+                    }, 500);
+                } catch (err) {
+                    clearInterval(progressInterval);
+                    addToast("安装失败: " + err.message, 'error');
+                    setIsInstalling(false);
+                    setInstallProgress(0);
+                }
+            };
+
+            const handleUninstall = async (id, name) => {
+                try {
+                    const res = await fetch(`${API_URL}/installed/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                    if (res.ok) {
+                        addToast(`已卸载: ${name}`, 'success');
+                        fetchInstalledSkills();
+                    } else {
+                        const data = await res.json();
+                        addToast(data.detail || "卸载失败", 'error');
+                    }
+                } catch (err) {
+                    addToast("卸载失败: " + err.message, 'error');
+                }
+            };
+
+            // 解析技能来源
+            const getSkillSource = (id) => {
+                if (id.includes('@anthropic-agent-skills')) return { source: 'local', label: '本地安装' };
+                if (id.includes('@claude-code-plugins')) return { source: 'plugins', label: 'claude-code-plugins' };
+                return { source: 'unknown', label: '未知来源' };
+            };
+
+            const canUninstall = (id) => {
+                return id.includes('@anthropic-agent-skills');
+            };
+
+            // 搜索过滤
+            const filteredUploadedSkills = uploadedSkills.filter(s =>
+                s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                s.description.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            const filteredInstalledSkills = installedSkills.filter(s =>
+                s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                s.description.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            return (
+                <div className="min-h-screen p-6">
+                    <ToastContainer toasts={toasts} removeToast={removeToast} />
+                    <SkillDetailModal skill={selectedDetail} onClose={() => setSelectedDetail(null)} />
+
+                    <div className="max-w-5xl mx-auto">
+                        {/* Header */}
+                        <header className="terminal-header rounded-t-lg p-4 mb-0">
+                            <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex gap-2">
+                                        <span className="w-3 h-3 rounded-full bg-[var(--neon-danger)]"></span>
+                                        <span className="w-3 h-3 rounded-full bg-[var(--neon-warning)]"></span>
+                                        <span className="w-3 h-3 rounded-full bg-[var(--neon-primary)]"></span>
+                                    </div>
+                                    <h1 className="font-['Orbitron'] text-xl tracking-wider">
+                                        <span className="text-[var(--neon-primary)] glow-text">CLAUDE</span>
+                                        <span className="text-[var(--text-secondary)]">::</span>
+                                        <span className="text-[var(--neon-secondary)]">SKILLS</span>
+                                    </h1>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <button
+                                        onClick={() => setActiveTab('install')}
+                                        className={`tab-btn pb-1 text-sm uppercase tracking-wider ${activeTab === 'install' ? 'active' : ''}`}
+                                    >
+                                        [ 安装 ]
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('manage')}
+                                        className={`tab-btn pb-1 text-sm uppercase tracking-wider ${activeTab === 'manage' ? 'active' : ''}`}
+                                    >
+                                        [ 管理 ]
+                                    </button>
+                                </div>
+                            </div>
+                        </header>
+
+                        {/* Config Info */}
+                        {config && (
+                            <div className="bg-[var(--bg-card)] border-x border-[var(--border-color)] px-4 py-3">
+                                <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-[var(--neon-primary)]">$</span>
+                                    <span className="text-[var(--text-secondary)]">INSTALL_PATH=</span>
+                                    <code className="text-[var(--neon-secondary)]">{config.skillDir}</code>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Search Bar */}
+                        <div className="bg-[var(--bg-card)] border-x border-[var(--border-color)] px-4 py-3">
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--neon-primary)]">⟩</span>
+                                <input
+                                    type="text"
+                                    placeholder="搜索技能..."
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    className="terminal-input w-full pl-8 pr-4 py-2 rounded text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] border-t-0 rounded-b-lg p-6">
+                            {activeTab === 'install' ? (
+                                <>
+                                    {/* Drop Zone */}
+                                    <div
+                                        className={`drop-zone rounded-lg p-12 text-center cursor-pointer transition-all ${isDragging ? 'active' : ''}`}
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        onClick={() => fileInputRef.current.click()}
+                                    >
+                                        <div className="text-6xl mb-4 text-[var(--neon-primary)] opacity-50">
+                                            ⬆
+                                        </div>
+                                        <h2 className="text-lg mb-2 text-[var(--text-primary)]">
+                                            拖放技能文件到此处
+                                        </h2>
+                                        <p className="text-[var(--text-secondary)] text-sm mb-6">
+                                            支持 .zip 压缩包 | 包含 SKILL.md 的文件夹
+                                        </p>
+                                        <button className="cyber-btn px-6 py-2 rounded text-sm">
+                                            [ 选择文件 ]
+                                        </button>
+                                        <input
+                                            type="file"
+                                            ref={fileInputRef}
+                                            className="hidden"
+                                            multiple
+                                            accept=".zip,.md"
+                                            onChange={handleFileSelect}
+                                        />
+                                    </div>
+
+                                    {/* Install Progress */}
+                                    {isInstalling && (
+                                        <div className="mt-6">
+                                            <ProgressBar progress={installProgress} label="正在安装技能..." />
+                                        </div>
+                                    )}
+
+                                    {/* Control Bar */}
+                                    {uploadedSkills.length > 0 && (
+                                        <div className="flex justify-between items-center mt-8 mb-4 text-sm">
+                                            <div className="flex items-center gap-4 text-[var(--text-secondary)]">
+                                                <span>
+                                                    共 <span className="text-[var(--neon-primary)]">{filteredUploadedSkills.length}</span> 个技能
+                                                </span>
+                                                <span>|</span>
+                                                <span>
+                                                    有效 <span className="text-[var(--neon-primary)]">{filteredUploadedSkills.filter(s => s.isValid).length}</span>
+                                                </span>
+                                                <span>|</span>
+                                                <button
+                                                    onClick={() => {
+                                                        const newSet = new Set(selectedSkills);
+                                                        uploadedSkills.forEach(s => { if (s.isValid) newSet.add(s.path) });
+                                                        setSelectedSkills(newSet);
+                                                    }}
+                                                    className="hover:text-[var(--neon-primary)] transition-colors"
+                                                >
+                                                    全选
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedSkills(new Set())}
+                                                    className="hover:text-[var(--neon-primary)] transition-colors"
+                                                >
+                                                    清除
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    onClick={() => { setUploadedSkills([]); setSelectedSkills(new Set()); }}
+                                                    className="cyber-btn cyber-btn-danger px-4 py-1.5 rounded text-xs"
+                                                >
+                                                    [ 清空列表 ]
+                                                </button>
+                                                <button
+                                                    onClick={handleInstall}
+                                                    disabled={selectedSkills.size === 0 || isInstalling}
+                                                    className="cyber-btn px-6 py-1.5 rounded text-xs"
+                                                >
+                                                    {isInstalling ? '[ 安装中... ]' : `[ 安装选中 (${selectedSkills.size}) ]`}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Skill List */}
+                                    <div className="space-y-3 mt-4">
+                                        {filteredUploadedSkills.map((skill, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="skill-card rounded-lg p-4 flex items-start gap-4"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedSkills.has(skill.path)}
+                                                    onChange={() => toggleSelection(skill.path)}
+                                                    className="custom-checkbox rounded mt-1"
+                                                />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <span className="text-[var(--neon-primary)]">◆</span>
+                                                        <h3 className="font-semibold text-[var(--text-primary)] truncate">
+                                                            {skill.name}
+                                                        </h3>
+                                                        {skill.isValid && (
+                                                            <span className="tag tag-valid rounded">VALID</span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[var(--text-secondary)] text-sm line-clamp-2">
+                                                        {skill.description}
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => setSelectedDetail(skill)}
+                                                    className="text-[var(--text-secondary)] hover:text-[var(--neon-secondary)] text-sm transition-colors"
+                                                >
+                                                    详情 →
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {uploadedSkills.length === 0 && (
+                                        <div className="text-center py-12 text-[var(--text-secondary)]">
+                                            <p className="text-lg mb-2">// 暂无技能</p>
+                                            <p className="text-sm">拖放或选择技能文件开始安装</p>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Installed Skills */}
+                                    <div className="flex items-center gap-3 mb-6">
+                                        <span className="text-[var(--neon-primary)]">$</span>
+                                        <span className="text-[var(--text-secondary)]">ls</span>
+                                        <span className="text-[var(--neon-secondary)]">installed_skills/</span>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {filteredInstalledSkills.map((skill, idx) => {
+                                            const sourceInfo = getSkillSource(skill.id);
+                                            const allowUninstall = canUninstall(skill.id);
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className="skill-card rounded-lg p-4 flex items-start justify-between gap-4"
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                            <span className="text-[var(--neon-secondary)]">◇</span>
+                                                            <h3 className="font-semibold text-[var(--text-primary)] truncate">
+                                                                {skill.name}
+                                                            </h3>
+                                                            <span className={`tag rounded ${sourceInfo.source === 'local' ? 'tag-local' : 'tag-source'}`}>
+                                                                {sourceInfo.label}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[var(--text-secondary)] text-sm line-clamp-2">
+                                                            {skill.description}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => setSelectedDetail(skill)}
+                                                            className="text-[var(--text-secondary)] hover:text-[var(--neon-secondary)] text-sm transition-colors"
+                                                        >
+                                                            详情
+                                                        </button>
+                                                        {allowUninstall ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm(`确认卸载 ${skill.name}？`)) {
+                                                                        handleUninstall(skill.id, skill.name);
+                                                                    }
+                                                                }}
+                                                                className="cyber-btn cyber-btn-danger px-3 py-1 rounded text-xs"
+                                                            >
+                                                                [ 卸载 ]
+                                                            </button>
+                                                        ) : (
+                                                            <span className="text-[var(--text-secondary)] text-xs opacity-50">
+                                                                系统插件
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {installedSkills.length === 0 && (
+                                        <div className="text-center py-12 text-[var(--text-secondary)]">
+                                            <p className="text-lg mb-2">// 目录为空</p>
+                                            <p className="text-sm">暂无已安装的技能</p>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <footer className="mt-6 text-center text-xs text-[var(--text-secondary)]">
+                            <span className="text-[var(--neon-primary)]">◆</span>
+                            <span className="mx-2">Claude Skills Terminal v1.0</span>
+                            <span className="text-[var(--neon-primary)]">◆</span>
+                        </footer>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
