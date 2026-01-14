@@ -389,7 +389,17 @@
     <script type="text/babel">
         const { useState, useEffect, useRef, useCallback } = React;
 
-        const API_URL = "http://localhost:8000";
+        // 从 URL 参数或 localStorage 获取 API 地址
+        const getApiUrl = () => {
+            const params = new URLSearchParams(window.location.search);
+            const urlApi = params.get('api');
+            if (urlApi) {
+                localStorage.setItem('skill_api_url', urlApi);
+                return urlApi;
+            }
+            return localStorage.getItem('skill_api_url') || "http://localhost:8000";
+        };
+        const API_URL = getApiUrl();
 
         // Toast 通知组件
         function ToastContainer({ toasts, removeToast }) {
